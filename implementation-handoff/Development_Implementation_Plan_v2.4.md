@@ -1,175 +1,119 @@
-# Wonders Operation System — Development Implementation Plan v2.4
+# Wonders Operation System — Development Plan v2.4 (Revised)
 
-> **Baseline**: Authorization Meta Model v2.4 + 11 Role Functional Specs + UI IA Spec v2.4-aligned
-> **Status**: Draft for implementation
-
----
-
-## Current State
-
-| Layer | Done | Remaining |
-|-------|------|-----------|
-| Backend controllers | 21 controllers, 74 @PreAuthorize | Org/role management APIs, Messages API, Audit API |
-| Flyway migrations | v2.4 (8 files) | — |
-| Frontend pages | 19 React pages under /app/admin/* | Dashboard, org/members detail, org/users, org/roles, messages, audit |
-| Sidebar | Flat menu, no role filtering | Grouped menu, per-role visibility |
-| Login | Unified page matching old design | must_change_password redirect, workspace routing after login |
-| Docs | Authorization Model + 11 specs + UI IA | — |
+> **Baseline**: Authorization Meta Model v2.4 + UI IA Spec v2.4-aligned + 11 Role Specs
+> **Last Updated**: 2026-06-24
 
 ---
 
-## Phase 1: Admin Workspace UI Restructuring (Week 1)
+## Done ✅
 
-### 1.1 Dashboard Page
-
-| Task | File | Description |
-|------|------|-------------|
-| 1.1.1 | `pages/Dashboard.tsx` (new) | Stats cards + todo list + quick actions |
-| 1.1.2 | Route | `App.tsx`: add `<Route path="dashboard" element={<Dashboard />} />` |
-| 1.1.3 | Per-role content | Dashboard shows role-specific stats (per §2.6) |
-
-### 1.2 Sidebar Grouping + Role Visibility
-
-| Task | File | Description |
-|------|------|-------------|
-| 1.2.1 | `DashboardLayout.tsx` | Group menu into 4 sections: Messages / Org / CRM / Email / Notifications |
-| 1.2.2 | `DashboardLayout.tsx` | Filter menu items by `useAuthStore.hasPermission(object, action)` |
-| 1.2.3 | `DashboardLayout.tsx` | Add Top Bar: school name + notification bell + user menu |
-
-### 1.3 Login → Role Routing
-
-| Task | File | Description |
-|------|------|-------------|
-| 1.3.1 | `Login.tsx` | After login, read session context, route to role default page |
-| 1.3.2 | `Login.tsx` | Add `must_change_password` check → force password change flow |
-
-### 1.4 Sidebar Items for Each Role
-
-| Role | Visible Groups | Default Page |
-|------|---------------|-------------|
-| principal | All | `/app/admin/dashboard` |
-| people_admin | Messages + Org + Notifications | `/app/admin/org/persons` |
-| operations | Dashboard + Messages + CRM + Email + Notifications | `/app/admin/crm/prospects` |
-| sales | Dashboard + Messages + CRM + Notifications | `/app/admin/crm/prospects` |
-| marketing | Dashboard + Messages + CRM + Email + Notifications | `/app/admin/crm/marketing-activities` |
-| finance | Dashboard + Messages + CRM + Notifications | `/app/admin/crm/sales-contracts` |
-| it_admin | Dashboard + Messages + Email + Org + Audit | `/app/admin/email/accounts` |
+| Layer | Item |
+|-------|------|
+| Backend | 35 repos, 74 @PreAuthorize, v2.4 Flyway, SessionContext, CORS |
+| Backend | people_admin role + OrgMemberService + email/broadcast controllers |
+| Frontend | Login (matches old design), Top Bar (sticky dark), grouped sidebar |
+| Frontend | Dashboard (per-role stats), ProspectList (full filters + table) |
+| Frontend | 14 CRM pages, email accounts/logs, member create, notifications |
+| Docs | Authorization Meta Model, 11 role specs, UI IA Spec, DEBUG_GUIDE |
+| Infra | Docker compose, start-all.ps1, health-check, reset-db |
 
 ---
 
-## Phase 2: Org Management Pages (Week 2)
+## Phase 1: Backend Gaps (Week 1)
 
-### 2.1 Person Management
+### 1.1 Rebuild + Deploy
+| # | Task |
+|---|------|
+| 1.1.1 | Rebuild backend JAR with updated SessionContextController (principal org/email/notification/audit perms) |
 
-| Task | Backend | Frontend |
-|------|---------|----------|
-| 2.1.1 | `GET /api/admin/org/persons` (existing, verify) | `OrgPersonList.tsx` — table + search + create modal |
-| 2.1.2 | `GET /api/admin/org/persons/:id` | `OrgPersonDetail.tsx` — detail drawer |
-| 2.1.3 | `PUT /api/admin/org/persons/:id` | Edit form in detail drawer |
-| 2.1.4 | `PUT /api/admin/org/persons/:id/deactivate` | Deactivate button with confirm |
+### 1.2 Org CRUD APIs
+| # | Endpoint | Controller |
+|---|----------|-----------|
+| 1.2.1 | `GET/POST/PUT /api/admin/org/persons` | new OrgPersonController |
+| 1.2.2 | `GET/PUT /api/admin/org/persons/:id` | ↑ |
+| 1.2.3 | `GET/POST /api/admin/org/users` | new OrgUserController |
+| 1.2.4 | `POST /api/admin/org/users/:id/reset-password` | ↑ |
+| 1.2.5 | `PUT /api/admin/org/users/:id/deactivate` | ↑ |
+| 1.2.6 | `GET /api/admin/org/roles` | new OrgRoleController |
+| 1.2.7 | `POST /api/admin/org/roles/assign` | ↑ |
+| 1.2.8 | `DELETE /api/admin/org/roles/:id` | ↑ |
 
-### 2.2 User Account Management
+### 1.3 Messages API
+| # | Endpoint |
+|---|----------|
+| 1.3.1 | `GET /api/admin/messages/inbox` |
+| 1.3.2 | `GET /api/admin/messages/:id` |
+| 1.3.3 | `POST /api/admin/messages` (compose) |
 
-| Task | Backend | Frontend |
-|------|---------|----------|
-| 2.2.1 | `GET /api/admin/org/users` (new controller) | `OrgUserList.tsx` |
-| 2.2.2 | `POST /api/admin/org/users/invite` | Invite modal with role selector |
-| 2.2.3 | `POST /api/admin/org/users/:id/reset-password` | Reset button |
-| 2.2.4 | `PUT /api/admin/org/users/:id/deactivate` | Deactivate button |
-
-### 2.3 Role Management
-
-| Task | Backend | Frontend |
-|------|---------|----------|
-| 2.3.1 | `GET /api/admin/org/roles` | `OrgRoleList.tsx` |
-| 2.3.2 | `POST /api/admin/org/roles/assign` | Assign role dropdown (respecting people_admin limits) |
-| 2.3.3 | `DELETE /api/admin/org/roles/:id` | Revoke button |
-
----
-
-## Phase 3: CRM Feature Parity (Week 3)
-
-### 3.1 Prospect Full Feature (Match Old admin-prospect.html)
-
-| Task | Description |
-|------|-------------|
-| 3.1.1 | ✅ Completed (stats, filters, table, bulk, edit, create, status change) |
-| 3.1.2 | Hook up "send email" functionality to backend email API |
-| 3.1.3 | Hook up batch export |
-
-### 3.2 Missing CRM Pages
-
-| Page | Status |
-|------|:---:|
-| Student Detail | ✅ Exists, verify with real data |
-| Activity Detail | ✅ Exists |
-| Contract Detail | ✅ Exists |
-| Communication History | Shared component, `includeProspectHistory` param |
-| Tag Management Page | Standalone page under CRM group |
-
-### 3.3 Messages / Inbox
-
-| Task | Backend | Frontend |
-|------|---------|----------|
-| 3.3.1 | `GET /api/admin/messages/inbox` | `MessageInbox.tsx` |
-| 3.3.2 | `GET /api/admin/messages/:id` | `MessageDetail.tsx` |
-| 3.3.3 | `POST /api/admin/messages` | Compose modal |
+### 1.4 Audit API
+| # | Endpoint |
+|---|----------|
+| 1.4.1 | `GET /api/admin/audit` (school-scoped, read-only) |
 
 ---
 
-## Phase 4: Email & Notifications (Week 4)
+## Phase 2: Frontend Placeholder → Real Pages (Week 1-2)
 
-### 4.1 Email Pages Polish
-
-| Page | Status |
-|------|:---:|
-| Email Account List | ✅ Exists, verify CRUD |
-| Email Log List | ✅ Exists, add filters |
-| Email Template List | New page |
-
-### 4.2 Notifications Inbox
-
-| Page | Status |
-|------|:---:|
-| Notification Inbox | Placeholder → full implementation |
-| Notification Detail | New page |
-| Broadcast Send | ✅ Exists |
+| # | Page | Route | Source of truth |
+|---|------|-------|-----------------|
+| 2.1 | `OrgPersonList.tsx` | `/app/admin/org/persons` | IA Spec §2.5 Org |
+| 2.2 | `OrgUserList.tsx` | `/app/admin/org/users` | IA Spec §2.5 Org |
+| 2.3 | `OrgRoleList.tsx` | `/app/admin/org/roles` | IA Spec §2.5 Org |
+| 2.4 | `MessageInbox.tsx` | `/app/admin/messages/inbox` | IA Spec §2.5 Messages |
+| 2.5 | `MessageDetail.tsx` | `/app/admin/messages/:id` | IA Spec §2.5 Messages |
+| 2.6 | `EmailTemplateList.tsx` | `/app/admin/email/templates` | IA Spec §2.5 Email |
+| 2.7 | `AuditLogList.tsx` | `/app/admin/audit` | IA Spec §2.5 Audit |
 
 ---
 
-## Phase 5: Academic Workspace (Sprint 8, deferred)
+## Phase 3: Missing Admin Features (Week 2-3)
 
-Dependent on backend academic modules being built first (scheduling_run, scheduling_proposal, schedule_baseline, planned_session, class_session). Full IA defined in UI IA Spec §2.1.
+| # | Feature | Description |
+|---|---------|-------------|
+| 3.1 | Principal credential flow | SaaSOperator: show generated password in UI (not only email) |
+| 3.2 | must_change_password | Login → detect flag → force password change page |
+| 3.3 | Password change page | `/app/admin/password-change` form |
+| 3.4 | Email send from ProspectList | Hook "发送邮件" button to backend email API |
+| 3.5 | Batch export | Prospect export CSV/Excel |
+| 3.6 | Notification inbox | Replace placeholder with real notification list |
 
 ---
 
-## Phase 6: Teacher / Student / Guardian (Sprints 9-11, deferred)
+## Phase 4: Academic Workspace (Sprint 8, deferred)
 
-Dependent on Academic workspace completion + messaging backend.
+| # | Task |
+|---|------|
+| 4.1 | Backend: scheduling_run, proposal, baseline, planned/class session controllers |
+| 4.2 | Frontend: academic workspace layout + sidebar (per IA Spec §2.1) |
+| 4.3 | Academic Dashboard page |
+| 4.4 | 16 academic pages (resources, classes, scheduling, execution, review, settings) |
 
 ---
 
-## Backend Tasks (Parallel to Frontend)
+## Phase 5: Teacher / Student / Guardian (Sprints 9-11, deferred)
 
-| # | Task | Priority |
-|---|------|:---:|
-| B-1 | Org CRUD endpoints (persons, users, roles) | P0 |
-| B-2 | Messages API (inbox, send, read) | P0 |
-| B-3 | Audit log API | P1 |
-| B-4 | Email template CRUD (existing EmailTemplateController — verify) | P1 |
-| B-5 | people_admin role enforcement (OrgMemberService rules — already coded) | P0 |
-| B-6 | Notification inbox backend | P1 |
-| B-7 | SaaSOperator: fix principal credential flow (auto-generate password visible in UI, not only email) | P0 |
+| Sprint | Workspace | # Pages |
+|--------|-----------|:---:|
+| 9 | Teacher | 12 |
+| 10 | Student | 12 |
+| 11 | Guardian | 10 |
 
 ---
 
 ## Milestones
 
-| M# | Week | Deliverable |
-|----|------|-------------|
-| M1 | 1 | Admin workspace: Dashboard + grouped sidebar + role visibility + login routing |
-| M2 | 2 | Org management: persons, users, roles CRUD (backend + frontend) |
-| M3 | 3 | CRM: messages inbox + tag page + email frontend |
-| M4 | 4 | Email+Notifications: template management + notification inbox |
-| M5 | 5-8 | Academic workspace (Sprint 8) |
-| M6 | 9-11 | Teacher / Student / Guardian (Sprints 9-11) |
+| M# | Phase | Deliverable |
+|----|-------|-------------|
+| M1 | 1.1 | Backend rebuilt with full principal perms |
+| M2 | 1.2-1.4 | Org CRUD + Messages + Audit APIs |
+| M3 | 2 | 7 placeholder pages → real pages |
+| M4 | 3 | Principal credential, password change, email send, export, notifications |
+| M5 | 4 | Academic workspace (Sprint 8) |
+| M6 | 5 | Teacher / Student / Guardian |
+
+---
+
+## Current Priority: M1 → M2
+
+Rebuild backend JAR → verify principal sees Org/Email/Notifications/Audit in sidebar.
+Then build Org CRUD APIs → then Org frontend pages.
