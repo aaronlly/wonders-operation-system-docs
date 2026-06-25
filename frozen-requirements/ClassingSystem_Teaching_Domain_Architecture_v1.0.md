@@ -1,7 +1,7 @@
 # ClassingSystem Teaching Domain Architecture v1.0 DRAFT
 
 **Document ID**: `ClassingSystem_Teaching_Domain_Architecture_v1.0_DRAFT`  
-**Status**: Draft for review  
+**Status**: Final  
 **Date**: 2026-06-25  
 **Baseline**: current runtime DB schema (v2.4 Flyway migrations) + `SessionContextController.buildAvailableWorkspaces()` implementation + v2.4 IA / Role specs + frozen requirements package + role functional specs package  
 **Primary purpose**: define the formal teaching-domain architecture for ClassingSystem / Wonders Academy, with manual scheduling as the first-class scheduling path, while remaining aligned with the uploaded v2.4 SQL and frozen IA / permission documents.
