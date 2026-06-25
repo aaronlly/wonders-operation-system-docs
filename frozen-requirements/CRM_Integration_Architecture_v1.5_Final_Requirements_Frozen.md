@@ -460,57 +460,89 @@ CREATE SCHEMA IF NOT EXISTS crm;
 -- Absorbs website form fields + CRM sales pipeline
 -- Fields originate from current prospect.prospect（pre-production working code）
 CREATE TABLE crm.prospect (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    institution_id          UUID NOT NULL REFERENCES org.education_institution(id),
-    -- institution_code maps via lookup to org.education_institution.id
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id              UUID NOT NULL REFERENCES org.education_institution(id),
 
-    -- Identity（from website form or manual entry）
-    legal_full_name         TEXT NOT NULL,          -- prospect.prospect.name
-    preferred_name          TEXT,
-    guardian_name           TEXT,
-    email                   TEXT NOT NULL,
-    phone                   TEXT,
-    wechat_id               TEXT,                   -- prospect.prospect.wechat
-    original_school         TEXT,
-    original_school_address TEXT,
-    grade_of_next_academic_year VARCHAR(20),        -- e.g. 1-8 / other
+    -- Student identity（from website form or manual entry）
+    legal_full_name             TEXT NOT NULL,          -- prospect.prospect.name
+    preferred_name              TEXT,
+    gender                      VARCHAR(10),
+    date_of_birth               DATE,
+    nationality                 TEXT,
+    religion                    TEXT,
+
+    -- Student contact
+    primary_phone               TEXT NOT NULL,
+    email                       TEXT,
+    wechat_id                   TEXT,
+    address                     TEXT,
+
+    -- Student school info
+    grade_of_next_academic_year TEXT,
+    day_school                  TEXT,
+    day_school_grade            TEXT,
+
+    -- Guardian info (primary guardian embedded in prospect)
+    guardian_name               TEXT,
+    guardian_gender             VARCHAR(10),
+    guardian_date_of_birth      DATE,
+    guardian_nationality        TEXT,
+    guardian_phone              TEXT,
+    guardian_email              TEXT,
+    guardian_wechat             TEXT,
+    guardian_address            TEXT,
+    guardian_relationship_type  VARCHAR(30),            -- FATHER/MOTHER/LEGAL_GUARDIAN/...
 
     -- Website form context
-    source_page             TEXT NOT NULL,          -- homepage/enrollment-2026/course-chinese
-    source_course           TEXT,                   -- chinese/english/...（singular; prospect.prospect.source_courses is comma-separated）
-    source_language         TEXT,                   -- zh/en/pl
-    source_url              TEXT,
-    user_agent              TEXT,
-    ip_address              TEXT,
+    source                      TEXT NOT NULL,          -- homepage/enrollment-2026/course-chinese
+    source_courses              TEXT,                   -- comma-separated course list
+    source_language             TEXT,                   -- zh/en/pl
+    source_url                  TEXT,
+    source_channel              TEXT,                   -- website/referral/walk-in/phone
+    user_agent                  TEXT,
+    ip_address                  TEXT,
 
     -- CRM sales fields
-    source_channel          TEXT,                   -- website/referral/walk-in/phone
-    assigned_to             UUID REFERENCES org.person(id),
+    notes                       TEXT,
+    status                      VARCHAR(20) NOT NULL DEFAULT 'new'
+        CHECK (status IN ('new','contacted','trial_booked','trial_completed',
+            'negotiating','qualified','converted','lost','dropped')),
+    assigned_to                 UUID REFERENCES org.person(id),
+    created_by                  UUID,
 
-    -- Lead pipeline status
-    status                  enum.prospect_status_enum NOT NULL DEFAULT 'new',
-    status_updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    -- Free-text communication note（legacy; migrated to crm.communication over time）
-    message                 TEXT,                   -- prospect.prospect.communication
-
-    -- Conversion links（filled after successful conversion）
-    person_id               UUID REFERENCES org.person(id),        -- → org.person.id
-    contract_id             UUID REFERENCES contract.contract(id), -- → contract.contract.id
+    -- Conversion links
+    converted_to_person_id      UUID REFERENCES org.person(id),
+    converted_at                TIMESTAMPTZ,
 
     -- Timestamps
-    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    contacted_at            TIMESTAMPTZ,
-    converted_at            TIMESTAMPTZ
+    contacted_at                TIMESTAMPTZ,
+    status_updated_at           TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_crm_prospect_institution ON crm.prospect(institution_id);
-CREATE INDEX idx_crm_prospect_status ON crm.prospect(status);
-CREATE INDEX idx_crm_prospect_email ON crm.prospect(email);
-CREATE INDEX idx_crm_prospect_phone ON crm.prospect(phone);
-CREATE INDEX idx_crm_prospect_assigned ON crm.prospect(assigned_to);
-CREATE INDEX idx_crm_prospect_person ON crm.prospect(person_id);
-CREATE INDEX idx_crm_prospect_created ON crm.prospect(created_at DESC);
+
+CREATE INDEX idx_prospect_status ON crm.prospect(status);
+CREATE INDEX idx_prospect_assigned ON crm.prospect(assigned_to);
+CREATE INDEX idx_prospect_institution ON crm.prospect(institution_id);
+CREATE INDEX idx_prospect_phone ON crm.prospect(primary_phone);
+
+-- Additional guardians per prospect (beyond primary guardian)
+CREATE TABLE crm.prospect_guardian (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    prospect_id         UUID NOT NULL REFERENCES crm.prospect(id) ON DELETE CASCADE,
+    guardian_name       TEXT NOT NULL,
+    guardian_gender     VARCHAR(10),
+    guardian_date_of_birth DATE,
+    guardian_nationality TEXT,
+    guardian_phone      TEXT,
+    guardian_email      TEXT,
+    guardian_wechat     TEXT,
+    guardian_address    TEXT,
+    relationship_type   VARCHAR(30),    -- FATHER/MOTHER/LEGAL_GUARDIAN/STEP_PARENT/GRANDPARENT/RELATIVE/OTHER
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_prospect_guardian_prospect ON crm.prospect_guardian(prospect_id);
 
 
 -- CRM Student Extension Profile（complements org.person, institution-scoped）
