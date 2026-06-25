@@ -69,6 +69,7 @@ RULE-IT-5: it_admin may reset password / deactivate normal user accounts only.
               it_admin may NOT deactivate principal, people_admin, finance, academic_director,
               operations, or platform-linked users.
               High-privilege account disablement requires principal approval.
+              Per ADR-025: same rule applies to password reset on other users' accounts.
 ```
 
 ## 9. Database

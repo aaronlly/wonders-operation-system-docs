@@ -215,6 +215,8 @@ RULE-ROLE-4: Only principal may assign it_admin
 RULE-USER-1: account_scope = 'institution'
 RULE-USER-2: must_change_password = true on invite
 RULE-USER-3: Deactivate = account_status = 'disabled', not physical delete
+RULE-USER-4: Password creation: user may provide initial password or leave empty for system auto-generation (12-char random)
+RULE-USER-5: People_admin may reset passwords for all institution users per ADR-025
 ```
 
 ---
